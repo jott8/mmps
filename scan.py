@@ -1,5 +1,5 @@
 import csv
-import sqlite3
+import sqlite3 as sql
 import undetected_chromedriver as uc
 from datetime import date, datetime
 import time
@@ -14,7 +14,7 @@ from classes.scan_data import ScanData
 
 from functions import convert_url, create_db_connection
 
-def get_scan_urls(conn: sqlite3.Connection) -> list:
+def get_scan_urls(conn: sql.Connection) -> list:
     sql = '''
         SELECT medimops_url,  book.book_id
         FROM book, monitoring_books as mb
@@ -88,7 +88,7 @@ def get_api_data(urls: list) -> list:
     return data
 
 
-def insert_individual_scan(conn: sqlite3.Connection, data: list, scan_id: int) -> None:
+def insert_individual_scan(conn: sql.Connection, data: list, scan_id: int) -> None:
     cursor = conn.cursor()
     sql = 'SELECT book_id FROM book WHERE medimops_url=?'
     book_id = cursor.execute(sql, (data.book.medimops_url,)).fetchone()[0]
@@ -99,7 +99,7 @@ def insert_individual_scan(conn: sqlite3.Connection, data: list, scan_id: int) -
                    data.individual_scan_data.on_sale, data.individual_scan_data.stock))
 
 
-def insert_scan(conn: sqlite3.Connection, start_time: float, execution_time: float, amount_books: int) -> None:
+def insert_scan(conn: sql.Connection, start_time: float, execution_time: float, amount_books: int) -> None:
     sql = 'INSERT OR IGNORE INTO scan(date, start_time, execution_time, amount_books) VALUES(?,?,?,?)'
 
     cursor = conn.cursor()
@@ -112,7 +112,7 @@ def insert_scan(conn: sqlite3.Connection, start_time: float, execution_time: flo
                          start_time, execution_time, amount_books))
 
 
-def data_to_db(data: list, conn: sqlite3.Connection, start_time: float, execution_time: float) -> None:
+def data_to_db(data: list, conn: sql.Connection, start_time: float, execution_time: float) -> None:
     cursor = conn.cursor()
 
     sql = 'SELECT scan_id FROM scan ORDER BY scan_id DESC LIMIT 1'

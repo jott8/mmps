@@ -1,7 +1,7 @@
-import sqlite3
+import sqlite3 as sql
 
 db_path = 'db/mmps_db.sqlite'
-conn = sqlite3.connect(db_path)
+conn = sql.connect(db_path)
 
 author_table = '''
     CREATE TABLE IF NOT EXISTS "author" (
@@ -37,7 +37,7 @@ monitoring_order_table = '''
 	CREATE TABLE IF NOT EXISTS "monitoring_order" (
 		"monitoring_id"	INTEGER NOT NULL UNIQUE,
 		"user_id"	INTEGER NOT NULL UNIQUE,
-		PRIMARY KEY("monitoring_id" AUTOINCREMENT)
+		PRIMARY KEY("monitoring_id")
 	);
 '''
 

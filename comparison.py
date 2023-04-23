@@ -1,12 +1,12 @@
 import time
 from functions import create_db_connection
-import sqlite3
+import sqlite3 as sql
 
 
 SIGNIFICANCE_RATE = -0.25
 
 
-def get_recent_scan_ids(conn: sqlite3.Connection) -> list:
+def get_recent_scan_ids(conn: sql.Connection) -> list:
     cursor = conn.cursor()
     ids = list()
 
@@ -24,7 +24,7 @@ def get_recent_scan_ids(conn: sqlite3.Connection) -> list:
     return ids
 
 
-def get_scan_result(conn: sqlite3.Connection, scan_id: int):
+def get_scan_result(conn: sql.Connection, scan_id: int):
     cursor = conn.cursor()
 
     sql = '''
@@ -37,7 +37,7 @@ def get_scan_result(conn: sqlite3.Connection, scan_id: int):
     return cursor.execute(sql, (scan_id, )).fetchall()
 
 
-def get_all_results(conn: sqlite3.Connection, scan_ids: list):
+def get_all_results(conn: sql.Connection, scan_ids: list):
     scan_results = list()
 
     for scan_id in scan_ids:
@@ -47,7 +47,7 @@ def get_all_results(conn: sqlite3.Connection, scan_ids: list):
 
 
 # Monitoring id('s) for each book with a significant price change
-def get_monitoring_id(conn: sqlite3.Connection, book_id: list) -> list:
+def get_monitoring_id(conn: sql.Connection, book_id: list) -> list:
     cursor = conn.cursor()
     ids = list()
     temp_ids = list()
@@ -66,7 +66,7 @@ def get_monitoring_id(conn: sqlite3.Connection, book_id: list) -> list:
     return ids
 
 
-def get_significant_changes(conn: sqlite3.Connection, scan_results: list) -> list:
+def get_significant_changes(conn: sql.Connection, scan_results: list) -> list:
     i = 0
     significant_changes = list()
 
@@ -85,7 +85,7 @@ def get_significant_changes(conn: sqlite3.Connection, scan_results: list) -> lis
     return significant_changes
 
 
-def get_users(conn: sqlite3.Connection, monitoring_id: list) -> list:
+def get_users(conn: sql.Connection, monitoring_id: list) -> list:
     cursor = conn.cursor()
     users = list()
     temp_users = list()

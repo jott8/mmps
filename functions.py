@@ -1,4 +1,4 @@
-import sqlite3
+import sqlite3 as sql
 
 
 def convert_url(url: str) -> str:
@@ -10,11 +10,11 @@ def valid_mm_url(url: str) -> bool:
         return url.startswith('https://www.medimops.de/') and url.endswith('.html')
 
 
-def create_db_connection(db_file) -> sqlite3.Connection:
+def create_db_connection(db_file) -> sql.Connection:
     conn = None
     try:
-        conn = sqlite3.connect(db_file)
-    except sqlite3.Error as err:
+        conn = sql.connect(db_file)
+    except sql.Error as err:
         print(err)
 
     return conn

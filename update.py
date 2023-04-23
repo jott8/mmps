@@ -1,4 +1,4 @@
-import sqlite3
+import sqlite3 as sql
 import undetected_chromedriver as uc
 import time
 import json
@@ -8,34 +8,12 @@ from tqdm import tqdm
 from classes.book import Book
 from classes.author import Author
 from classes.entry_data import EntryData
+from classes.user import User
 
 from functions import convert_url, valid_mm_url, create_db_connection
 
 
-# Iterates through csv file entries and checks if there is a book which is not on the monitoring list
-def urls_to_monitoring_list(conn: sqlite3.Connection) -> None:
-    monitoring_id = 1
-
-    for _ in URL_FILES:
-        urls = get_csv_urls_i(monitoring_id-1, URL_FILES)
-
-        for url in urls:
-            cursor = conn.cursor()
-
-            sql = 'SELECT book_id FROM book WHERE medimops_url=?'
-            book_id = cursor.execute(sql, (url,)).fetchone()[0]
-
-            sql = 'INSERT OR IGNORE INTO monitoring_books(monitoring_id, book_id) VALUES(?,?)'
-            cursor = conn.cursor()
-            cursor.execute(sql, (monitoring_id, book_id))
-        monitoring_id += 1
-
-    conn.commit()
-           
-    return urls
-
-
-def insert_author(conn: sqlite3.Connection, author: Author) -> int:
+def insert_author(conn: sql.Connection, author: Author) -> int:
     sql = 'INSERT OR IGNORE INTO author(name, last_name) VALUES(?,?)'
 
     cursor = conn.cursor()
@@ -47,7 +25,7 @@ def insert_author(conn: sqlite3.Connection, author: Author) -> int:
     return author_id
 
 
-def insert_book(conn: sqlite3.Connection, author_id: int, book: Book) -> None:
+def insert_book(conn: sql.Connection, author_id: int, book: Book) -> None:
     sql = 'INSERT OR IGNORE INTO book(title, pages, medium, author_id, medimops_url, api_url) VALUES(?,?,?,?,?,?)'
 
     cursor = conn.cursor()
@@ -55,7 +33,7 @@ def insert_book(conn: sqlite3.Connection, author_id: int, book: Book) -> None:
                    book.medimops_url, book.api_url))
 
 
-def book_exists(conn: sqlite3.Connection, url: str) -> bool:
+def book_exists(conn: sql.Connection, url: str) -> bool:
     sql = 'SELECT EXISTS(SELECT 1 FROM book WHERE medimops_url=?)'
 
     cursor = conn.cursor()
@@ -64,7 +42,7 @@ def book_exists(conn: sqlite3.Connection, url: str) -> bool:
     return exists == 1
 
 
-def monitoring_book_exists(conn: sqlite3.Connection, url: str) -> bool:
+def monitoring_book_exists(conn: sql.Connection, url: str) -> bool:
     sql = '''
         SELECT EXISTS (SELECT 1 FROM book, monitoring_books 
         WHERE book.medimops_url=?
@@ -79,7 +57,7 @@ def monitoring_book_exists(conn: sqlite3.Connection, url: str) -> bool:
         return False
 
 
-def get_missing_urls(conn: sqlite3.Connection, urls: list) -> list:
+def get_missing_urls(conn: sql.Connection, urls: list) -> list:
     missing_urls = list()
     for url in urls:
         if (not book_exists(conn, url)):
@@ -88,7 +66,7 @@ def get_missing_urls(conn: sqlite3.Connection, urls: list) -> list:
     return missing_urls
 
 
-def get_monitoring_urls(conn: sqlite3.Connection) -> list:
+def get_monitoring_urls(conn: sql.Connection) -> list:
     monitoring_urls = list()
 
     sql = '''
@@ -106,7 +84,7 @@ def get_monitoring_urls(conn: sqlite3.Connection) -> list:
     return monitoring_urls
 
 
-def get_unwanted_urls(conn: sqlite3.Connection) -> list:
+def get_unwanted_urls(conn: sql.Connection) -> list:
     unwanted_urls = list()
     monitoring_urls = get_monitoring_urls(conn)
     csv_urls = get_csv_urls(URL_FILES)
@@ -118,7 +96,7 @@ def get_unwanted_urls(conn: sqlite3.Connection) -> list:
     return unwanted_urls
 
 
-def insert_entry(conn: sqlite3.Connection, entry_data: EntryData) -> None:
+def insert_entry(conn: sql.Connection, entry_data: EntryData) -> None:
     author_id = insert_author(conn, entry_data.author)
     insert_book(conn, author_id, entry_data.book)
 
@@ -161,7 +139,7 @@ def get_api_data(urls: list) -> list:
     return data
 
 
-def user_exists(conn: sqlite3.Connection, mail: str) -> bool:
+def user_exists(conn: sql.Connection, mail: str) -> bool:
     sql = '''
         SELECT EXISTS (SELECT 1 FROM user
         WHERE user.email=?) 
@@ -175,71 +153,119 @@ def user_exists(conn: sqlite3.Connection, mail: str) -> bool:
         return False
 
 
-def insert_user(conn: sqlite3.Connection, name: str, last_name: str, email: str):
+def insert_user(conn: sql.Connection, name: str, last_name: str, email: str):
     sql = 'INSERT OR IGNORE INTO user(name, last_name, email) VALUES(?,?,?)'
 
     cursor = conn.cursor()
     cursor.execute(sql, (name, last_name, email))
 
 
-def check_users(conn: sqlite3.Connection) -> list:
-    import glob
-
-    urls = list()
-
-    for filepath in glob.iglob('db/urls/*.txt'):
-        with open(filepath, 'r') as file:
-            lines = [line.rstrip() for line in file]
-            
-            name = lines[0]
-            last_name = lines[1]
-            email = lines[2]
-            
-            if(not user_exists(conn, lines[2])):
-                print(f'"{email}" does not exist yet.')
-                insert_user(conn, name, last_name, email)
-                
-            for i in range(len(lines)):
-                if(i > 2 and valid_mm_url(lines[i])):
-                    urls.append(lines[i])
-            
-            # urls.append([lines[i] for i in range(len(lines)) if i > 2 and valid_mm_url(lines[i])])
-           
-    return urls
-                
-
-# Iterates through csv file and checks if there is a book entry for each url
-# If not, stores missing urls and gets data from the website afterwards
-def update_books() -> None:
-    # conn = create_db_connection('db/mmps_db.sqlite')
-    # missing_urls = get_missing_urls(conn)
-    # unwanted_urls = get_unwanted_urls(conn)
-    
-    conn = create_db_connection("db/mmps_db.sqlite")
-    user_urls = check_users(conn)
-    missing_urls = get_missing_urls(conn, user_urls)
-
-    # TODO: actually removing unwanted urls
-    # print(f'Unwanted urls: \n{unwanted_urls}\n')
-
-    if (not missing_urls):
-        print('Database is up-to-date. No urls are missing!')
-        return
-
-    print(missing_urls)
-
-    amount_books = len(missing_urls)
+def fetch_insert_missing(conn: sql.Connection, missing_urls: list[str]):
     data = get_api_data(missing_urls)
 
     for data_row in data:
         insert_entry(conn, data_row)
 
-    # urls_to_monitoring_list(conn)
 
-    conn.commit()
+def get_users_url_dir() -> list:
+    import glob
+    
+    users = list()
 
-    print(f'--> Update done. {len(missing_urls)} new book(s)')
+    for filepath in glob.iglob('db/urls/*.txt'):
+        with open(filepath, 'r') as file:
+            lines = [line.rstrip() for line in file]
+            
+            user = User(lines[0], lines[1], lines[2])
+            user.urls = [lines[i] for i in range(len(lines)) if i > 2 and valid_mm_url(lines[i])]
+            users.append(user)
+            
+    return users
+
+
+def check_users(conn: sql.Connection, users: list[User]) -> list:
+    all_urls = list()
+    
+    for user in users:
+        if(not user_exists(conn, user.email)):
+            print(f'User: "{user.email}" does not exist yet.')
+            insert_user(conn, user.name, user.last_name, user.email)
+           
+        user_id = get_user_id(conn, user.email)
+        if(not monitoring_order_exists(conn, user_id)):
+            insert_monitoring_order(conn, user_id)
+            
+        for url in user.urls:
+            all_urls.append(url)
+            
+    return all_urls
+
+
+def monitoring_order_exists(conn: sql.Connection, user_id: int) -> bool:
+    return conn.cursor().execute('SELECT EXISTS (SELECT 1 FROM monitoring_order WHERE user_id=?)', (user_id,)).fetchone()[0] == 1
+
+
+def insert_monitoring_order(conn: sql.Connection, user_id: int) -> None:
+    print(user_id)
+    sql = 'INSERT OR IGNORE INTO monitoring_order(user_id) VALUES(?)'
+
+    cursor = conn.cursor()
+    cursor.execute(sql, (user_id, ))
+    
+
+def insert_monitoring_book(conn: sql.Connection, monitoring_id: int, book_id: int) -> None:
+    sql = 'INSERT OR IGNORE INTO monitoring_books(monitoring_id, book_id) VALUES(?,?)'
+    cursor = conn.cursor()
+    cursor.execute(sql, (monitoring_id, book_id))
+
+
+def get_user_id(conn: sql.Connection, email: str) -> int:
+    return conn.cursor().execute('SELECT user_id FROM user WHERE email=?', (email,)).fetchone()[0]
+
+
+def get_monitoring_id(conn: sql.Connection, email: str) -> int:
+    sql = '''
+        SELECT monitoring_id
+        FROM monitoring_order, user
+        WHERE user.user_id = monitoring_order.user_id
+        AND user.email = ?    
+    '''
+    return conn.cursor().execute(sql, (email,)).fetchone()[0]
+
+
+
+def get_book_id(conn: sql.Connection, url: str) -> int:
+    return conn.cursor().execute('SELECT book_id FROM book WHERE medimops_url=?', (url,)).fetchone()[0]
+    
+
+def check_books(conn: sql.Connection, urls: list[str], users: list[User]) -> None:
+    missing = get_missing_urls(conn, urls)
+    monitoring_books = get_monitoring_urls(conn)
+    
+    if(missing): fetch_insert_missing(conn, missing)
+    
+    for user in users:
+        monitoring_id = get_monitoring_id(conn, user.email)
         
+        for url in user.urls:
+            if(not monitoring_book_exists(conn, url)):
+                book_id = get_book_id(conn, url) 
+                
+                insert_monitoring_book(conn, monitoring_id, book_id)         
+        
+        
+                 
+
+# Iterates through csv file and checks if there is a book entry for each url
+# If not, stores missing urls and gets data from the website afterwards
+def update_books() -> None:
+    conn = create_db_connection('db/mmps_db.sqlite')
+    
+    users = get_users_url_dir()
+    user_urls = check_users(conn, users)
+    check_books(conn, user_urls, users)
+    
+    conn.commit()
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-import sqlite3
+import sqlite3 as sql
 import pandas as pd
 import matplotlib.pyplot as plt
 import math
@@ -8,17 +8,17 @@ def isNan(num):
     return num != num
 
 
-def create_db_connection(db_file) -> sqlite3.Connection:
+def create_db_connection(db_file) -> sql.Connection:
     conn = None
     try:
-        conn = sqlite3.connect(db_file)
-    except sqlite3.Error as err:
+        conn = sql.connect(db_file)
+    except sql.Error as err:
         print(err)
 
     return conn
 
 
-def get_entries(conn: sqlite3.Connection) -> list:
+def get_entries(conn: sql.Connection) -> list:
     entries = []
 
     cursor = conn.cursor()
