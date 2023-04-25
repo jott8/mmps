@@ -67,7 +67,7 @@ def handle_pre(pre: tuple, url: str) -> ScanData:
     return ScanData(book, author, individual_scan_data)
 
 
-def get_api_data(urls: list) -> list:
+def get_api_data(urls: list) -> list[ScanData]:
     options = uc.ChromeOptions()
     options.add_argument('--headless')
     driver = uc.Chrome(options=options)
@@ -117,8 +117,12 @@ def data_to_db(data: list, conn: sql.Connection, start_time: float, execution_ti
 
     sql = 'SELECT scan_id FROM scan ORDER BY scan_id DESC LIMIT 1'
 
-    scan_id = cursor.execute(
-        sql).fetchone()[0] + 1
+    result = cursor.execute(sql).fetchone()
+    
+    if(not result):
+        scan_id = 1
+    else: 
+        scan_id = result[0] + 1
 
     for data_row in data:
         insert_individual_scan(conn, data_row, scan_id)
@@ -145,8 +149,8 @@ def scan() -> bool:
             execution_time = round(time.time() - start_time, 2)
             data_to_db(data, conn, now, execution_time)
             return True
-        except:
-            print(Exception)
+        except Exception as e:
+            print(e)
             return False
 
     else:
