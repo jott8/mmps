@@ -99,7 +99,7 @@ def insert_individual_scan(conn: sql.Connection, data: list, scan_id: int) -> No
                    data.individual_scan_data.on_sale, data.individual_scan_data.stock))
 
 
-def insert_scan(conn: sql.Connection, start_time: float, execution_time: float, amount_books: int) -> None:
+def insert_scan(conn: sql.Connection, start_time: float, execution_time: float, amount_books: int, scan_id: int) -> None:
     sql = 'INSERT OR IGNORE INTO scan(date, start_time, execution_time, amount_books) VALUES(?,?,?,?)'
 
     cursor = conn.cursor()
@@ -108,8 +108,7 @@ def insert_scan(conn: sql.Connection, start_time: float, execution_time: float, 
 
     with open('db/scan_log.csv', 'a', encoding='UTF8') as file:
         writer = csv.writer(file)
-        writer.writerow((date.today().strftime("%d/%m/%Y"),
-                         start_time, execution_time, amount_books))
+        writer.writerow((scan_id, date.today().strftime("%d/%m/%Y"), start_time, execution_time, amount_books))
 
 
 def data_to_db(data: list, conn: sql.Connection, start_time: float, execution_time: float) -> None:
@@ -127,7 +126,7 @@ def data_to_db(data: list, conn: sql.Connection, start_time: float, execution_ti
     for data_row in data:
         insert_individual_scan(conn, data_row, scan_id)
 
-    insert_scan(conn, start_time, execution_time, len(data))
+    insert_scan(conn, start_time, execution_time, len(data), scan_id)
 
     conn.commit()
 
