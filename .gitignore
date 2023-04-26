@@ -1,2 +1,5 @@
 .DS_Store
 __pycache__/
+venv/
+classes/__pycache__/
+plotting/__pycache__/
